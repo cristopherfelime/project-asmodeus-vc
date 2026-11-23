@@ -1,0 +1,32 @@
+"""In-memory storage and system clock adapters for {{project_name}}."""
+
+from datetime import UTC, datetime
+
+from {{package_name}}.domain.contracts import DomainRecord
+
+
+class SystemClock:
+    """Wall-clock adapter returning timezone-aware UTC timestamps."""
+
+    def now_utc(self) -> datetime:
+        """Return the current UTC timestamp."""
+        return datetime.now(tz=UTC)
+
+
+class InMemoryRecordRepository:
+    """Thread-unsafe in-memory repository suitable for local runs and tests."""
+
+    def __init__(self) -> None:
+        self._records: dict[str, DomainRecord] = {}
+
+    def save(self, record: DomainRecord) -> None:
+        """Store or overwrite a domain record by its identifier."""
+        self._records[record.record_id] = record
+
+    def get(self, record_id: str) -> DomainRecord | None:
+        """Retrieve a record by identifier, or None if missing."""
+        return self._records.get(record_id)
+
+    def list_all(self) -> tuple[DomainRecord, ...]:
+        """Return all stored records sorted by record identifier."""
+        return tuple(self._records[key] for key in sorted(self._records))

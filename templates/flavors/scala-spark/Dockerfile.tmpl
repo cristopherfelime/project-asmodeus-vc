@@ -1,0 +1,24 @@
+FROM eclipse-temurin:17-jre-jammy AS runtime
+
+ARG SPARK_VERSION=3.5.3
+ARG HADOOP_PROFILE=hadoop3-scala2.13
+ENV SPARK_HOME=/opt/spark
+ENV PATH="${SPARK_HOME}/bin:${PATH}"
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates procps \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-${HADOOP_PROFILE}.tgz" \
+      | tar -xz -C /opt \
+    && mv "/opt/spark-${SPARK_VERSION}-bin-${HADOOP_PROFILE}" "${SPARK_HOME}" \
+    && useradd --system --uid 10001 --create-home appuser
+
+WORKDIR /opt/spark-app
+
+# Package first with `sbt package` before building this runtime image.
+COPY target/scala-2.13/{{project_name}}_2.13-0.1.0-SNAPSHOT.jar /opt/spark-app/app.jar
+
+ENV JAVA_TOOL_OPTIONS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0"
+USER appuser
+
+ENTRYPOINT ["/opt/spark/bin/spark-submit", "--class", "com.{{scala_package}}.Main", "--master", "local[*]", "/opt/spark-app/app.jar"]

@@ -1,0 +1,21 @@
+use {{crate_name}}::adapters::InMemoryStore;
+use {{crate_name}}::domain::{ServiceEvent, Severity};
+use {{crate_name}}::ports::EventStore;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
+    let store = InMemoryStore::new();
+    let startup_event = ServiceEvent::new("boot-001", "service started", Severity::Info)?;
+    store.append(startup_event)?;
+
+    let stored_count = store.count()?;
+    let service_name = "{{project_name}}";
+    // Press Ctrl-C to trigger graceful shutdown.
+    tracing::info!(stored_count, service = service_name, "service ready");
+
+    tokio::signal::ctrl_c().await?;
+    tracing::info!(service = service_name, "shutdown signal received");
+    Ok(())
+}

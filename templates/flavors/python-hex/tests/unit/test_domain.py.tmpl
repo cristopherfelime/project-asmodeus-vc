@@ -1,0 +1,113 @@
+"""Unit tests for {{project_name}} domain, workflows, and configuration."""
+
+from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from {{package_name}}.adapters.memory_storage import InMemoryRecordRepository
+from {{package_name}}.config.settings import load_settings
+from {{package_name}}.domain.contracts import DomainRecord
+from {{package_name}}.workflows.health import register_record, run_health_check
+
+
+class _FixedClock:
+    def __init__(self, instant: datetime) -> None:
+        self._instant = instant
+
+    def now_utc(self) -> datetime:
+        return self._instant
+
+
+def test_domain_record_accepts_decimal_and_utc() -> None:
+    instant = datetime(2025, 1, 15, 12, 30, tzinfo=UTC)
+    record = DomainRecord(
+        record_id="rec-001",
+        amount=Decimal("42.50"),
+        recorded_at_utc=instant,
+    )
+    assert record.amount == Decimal("42.50")
+    assert record.recorded_at_utc == instant
+
+
+def test_domain_record_rejects_naive_timestamp() -> None:
+    naive = datetime(2025, 1, 15, 12, 30)
+    with pytest.raises(ValidationError):
+        DomainRecord(
+            record_id="rec-002",
+            amount=Decimal("10.00"),
+            recorded_at_utc=naive,
+        )
+
+
+def test_domain_record_rejects_non_utc_offset() -> None:
+    plus_two = timezone(timedelta(hours=2))
+    non_utc = datetime(2025, 1, 15, 12, 30, tzinfo=plus_two)
+    with pytest.raises(ValidationError):
+        DomainRecord(
+            record_id="rec-003",
+            amount=Decimal("10.00"),
+            recorded_at_utc=non_utc,
+        )
+
+
+def test_domain_record_rejects_extra_fields_and_mutation() -> None:
+    instant = datetime(2025, 1, 15, 12, 30, tzinfo=UTC)
+    with pytest.raises(ValidationError):
+        DomainRecord.model_validate(
+            {
+                "record_id": "rec-004",
+                "amount": "1.25",
+                "recorded_at_utc": instant,
+                "unexpected": "nope",
+            }
+        )
+
+    record = DomainRecord(
+        record_id="rec-004",
+        amount=Decimal("1.25"),
+        recorded_at_utc=instant,
+    )
+    field_name = "amount"
+    with pytest.raises(ValidationError):
+        setattr(record, field_name, Decimal("9.99"))
+
+
+def test_register_record_and_health_check_use_injected_ports() -> None:
+    instant = datetime(2025, 2, 1, 8, 0, tzinfo=UTC)
+    clock = _FixedClock(instant)
+    repo = InMemoryRecordRepository()
+
+    created = register_record(
+        "rec-100",
+        Decimal("99.95"),
+        clock=clock,
+        repository=repo,
+    )
+    snapshot = run_health_check(
+        service_name="{{project_name}}",
+        clock=clock,
+        repository=repo,
+    )
+
+    assert created.recorded_at_utc == instant
+    assert repo.get("rec-100") == created
+    assert snapshot.record_count == 1
+    assert snapshot.checked_at_utc == instant
+
+
+def test_load_settings_preserves_process_env_over_dotenv(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text("APP_ENV=dotenv_env\nLOG_LEVEL=WARNING\n", encoding="utf-8")
+
+    monkeypatch.setenv("APP_ENV", "compose_prod")
+    monkeypatch.delenv("LOG_LEVEL", raising=False)
+
+    settings = load_settings(dotenv_path=env_file)
+    assert settings.app_env == "compose_prod"
+    assert settings.log_level == "WARNING"

@@ -1,0 +1,37 @@
+[Unit]
+Description={{project_name}} — {{description}}
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User={{project_name}}
+Group={{project_name}}
+WorkingDirectory=/opt/{{project_name}}
+EnvironmentFile=-/etc/{{project_name}}/env
+Environment=MALLOC_ARENA_MAX=2
+ExecStart=/opt/{{project_name}}/bin/{{project_name}}
+
+Restart=on-failure
+RestartSec=10
+
+# e2-micro memory protection
+MemoryHigh=220M
+MemoryMax=300M
+OOMScoreAdjust=-100
+
+# Baseline systemd sandboxing
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/{{project_name}}
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{project_name}}
+
+[Install]
+WantedBy=multi-user.target

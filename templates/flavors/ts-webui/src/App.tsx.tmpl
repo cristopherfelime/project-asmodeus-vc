@@ -1,0 +1,129 @@
+import { useMemo, useState } from "react";
+
+import {
+  type ServiceNode,
+  type ServiceStatus,
+  formatMetricValue,
+  formatUtcTimestamp,
+  statusLabel,
+} from "./domain/formatters";
+
+type StatusFilter = "all" | ServiceStatus;
+
+const INITIAL_NODES: readonly ServiceNode[] = [
+  {
+    id: "core-api",
+    label: "Core API Gateway",
+    status: "ok",
+    latencyMs: 14.2,
+    updatedAtIso: "2026-01-15T12:00:00Z",
+  },
+  {
+    id: "ingest-worker",
+    label: "Stream Ingest Worker",
+    status: "degraded",
+    latencyMs: 142.8,
+    updatedAtIso: "2026-01-15T11:58:30Z",
+  },
+  {
+    id: "cold-archive",
+    label: "Cold Archive Sync",
+    status: "offline",
+    latencyMs: Number.NaN,
+    updatedAtIso: "2026-01-15T10:45:00Z",
+  },
+];
+
+const FILTERS: readonly StatusFilter[] = ["all", "ok", "degraded", "offline"];
+
+export function App() {
+  const [nodes, setNodes] = useState<readonly ServiceNode[]>(INITIAL_NODES);
+  const [filter, setFilter] = useState<StatusFilter>("all");
+
+  const visibleNodes = useMemo(
+    () => (filter === "all" ? nodes : nodes.filter((node) => node.status === filter)),
+    [filter, nodes]
+  );
+
+  const healthyCount = useMemo(
+    () => nodes.filter((node) => node.status === "ok").length,
+    [nodes]
+  );
+
+  function handleCycleHealth(): void {
+    setNodes((prev) =>
+      prev.map((node) => {
+        if (node.id !== "ingest-worker") {
+          return node;
+        }
+        const nextStatus: ServiceStatus = node.status === "degraded" ? "ok" : "degraded";
+        return {
+          ...node,
+          status: nextStatus,
+          latencyMs: nextStatus === "ok" ? 18.4 : 142.8,
+          updatedAtIso: new Date().toISOString(),
+        };
+      })
+    );
+  }
+
+  return (
+    <main className="shell">
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">Operations Dashboard</p>
+          <h1 className="title">{{project_name}}</h1>
+          <p className="subtitle">{{description}}</p>
+        </div>
+        <div className="summary-pill">
+          <span className="summary-label">Healthy Services</span>
+          <strong className="summary-value">
+            {healthyCount} / {nodes.length}
+          </strong>
+        </div>
+      </header>
+
+      <section className="controls" aria-label="Service filters">
+        <div className="filter-group" role="group" aria-label="Filter by status">
+          {FILTERS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={filter === item ? "chip chip--active" : "chip"}
+              onClick={() => setFilter(item)}
+            >
+              {item === "all" ? "All" : statusLabel(item)}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="action-btn" onClick={handleCycleHealth}>
+          Toggle Worker State
+        </button>
+      </section>
+
+      <section className="grid" aria-label="Service status cards">
+        {visibleNodes.map((node) => (
+          <article key={node.id} className="card">
+            <div className="card-header">
+              <div>
+                <h2 className="card-title">{node.label}</h2>
+                <code className="card-slug">{node.id}</code>
+              </div>
+              <span className={`badge badge--${node.status}`}>{statusLabel(node.status)}</span>
+            </div>
+            <dl className="metrics">
+              <div className="metric-row">
+                <dt>Latency</dt>
+                <dd>{formatMetricValue(node.latencyMs, "ms")}</dd>
+              </div>
+              <div className="metric-row">
+                <dt>Updated</dt>
+                <dd>{formatUtcTimestamp(node.updatedAtIso)}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
+      </section>
+    </main>
+  );
+}

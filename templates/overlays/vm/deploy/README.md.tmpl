@@ -1,0 +1,47 @@
+# VM Deployment Guide (`e2-micro`) — {{project_name}}
+
+Target host profile: **GCP `e2-micro`** (~1 GB total RAM, ~378 MB safe steady-state application budget after kernel, `systemd`, `journald`, `sshd`, and monitoring overhead).
+
+## 1. Memory Budget Checklist
+
+| Component | Target Budget | Controls |
+| --- | --- | --- |
+| Linux kernel + OS services (`systemd`, `journald`, `sshd`) | ~500–600 MB | Cap `SystemMaxUse=100M` in `/etc/systemd/journald.conf` |
+| `{{project_name}}.service` steady-state RSS | <= 220 MB | `MALLOC_ARENA_MAX=2`, `MemoryHigh=220M`, `MemoryMax=300M` |
+| Swap / OOM safety margin | 1–2 GB swapfile | `OOMScoreAdjust=-100` protects critical service over transient helpers |
+
+## 2. Install & Enable `systemd` Unit
+
+```bash
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin {{project_name}} || true
+sudo mkdir -p /opt/{{project_name}}/bin /var/lib/{{project_name}} /etc/{{project_name}}
+sudo chown -R {{project_name}}:{{project_name}} /var/lib/{{project_name}}
+sudo cp deploy/{{project_name}}.service /etc/systemd/system/{{project_name}}.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now {{project_name}}.service
+```
+
+## 3. Logs & Live Resource Inspection
+
+```bash
+sudo systemctl status {{project_name}}.service
+sudo journalctl -u {{project_name}}.service -n 100 --no-pager
+sudo journalctl -u {{project_name}}.service -f
+systemctl show {{project_name}}.service -p MemoryCurrent -p NRestarts
+```
+
+## 4. Soak Test Checklist (Before Production Cutover)
+
+1. Verify `MemoryCurrent` stabilizes well below `220M` after 24 hours of representative load.
+2. Confirm `NRestarts` remains `0` and `journalctl -k` shows zero OOM-killer events.
+3. Run `sudo BACKUP_DIR=/var/backups/{{project_name}} bash deploy/backup.sh` and verify archive readability.
+
+## 5. Rollback Procedure
+
+```bash
+sudo systemctl stop {{project_name}}.service
+# Restore previous binary into /opt/{{project_name}}/bin/{{project_name}}
+# Restore SQLite/data snapshot from /var/backups/{{project_name}}/ if schema changed
+sudo systemctl start {{project_name}}.service
+sudo journalctl -u {{project_name}}.service -n 50 --no-pager
+```

@@ -1,0 +1,12 @@
+package ports
+
+import (
+	"context"
+
+	"{{go_module}}/internal/domain"
+)
+
+// Sink persists processed job results.
+type Sink interface {
+	Write(ctx context.Context, result domain.Result) error
+}

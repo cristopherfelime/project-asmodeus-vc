@@ -1,0 +1,15 @@
+use thiserror::Error;
+
+use crate::domain::ServiceEvent;
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum StoreError {
+    #[error("storage lock was poisoned")]
+    LockPoisoned,
+}
+
+pub trait EventStore: Send + Sync {
+    fn append(&self, event: ServiceEvent) -> Result<(), StoreError>;
+    fn get(&self, id: &str) -> Result<Option<ServiceEvent>, StoreError>;
+    fn count(&self) -> Result<usize, StoreError>;
+}

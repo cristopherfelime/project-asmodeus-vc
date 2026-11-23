@@ -1,0 +1,41 @@
+export type ServiceStatus = "ok" | "degraded" | "offline";
+
+export interface ServiceNode {
+  readonly id: string;
+  readonly label: string;
+  readonly status: ServiceStatus;
+  readonly latencyMs: number;
+  readonly updatedAtIso: string;
+}
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const STATUS_LABELS: Record<ServiceStatus, string> = {
+  ok: "Operational",
+  degraded: "Degraded",
+  offline: "Offline",
+};
+
+export function statusLabel(status: ServiceStatus): string {
+  return STATUS_LABELS[status];
+}
+
+export function formatMetricValue(value: number, unit: string): string {
+  if (!Number.isFinite(value)) {
+    return "--";
+  }
+  return `${value.toFixed(1)} ${unit}`;
+}
+
+export function formatUtcTimestamp(isoOrDate: string | Date): string {
+  const date = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+  if (Number.isNaN(date.getTime())) {
+    return "invalid-timestamp";
+  }
+  const iso = date.toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 19)} UTC`;
+}
+
+export function isValidSlug(value: string): boolean {
+  return SLUG_PATTERN.test(value);
+}

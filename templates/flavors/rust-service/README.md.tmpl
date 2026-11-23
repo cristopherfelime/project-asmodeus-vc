@@ -1,0 +1,39 @@
+# {{project_name}}
+
+{{description}}
+
+Hexagonal Rust service starter with explicit `domain`, `ports`, and `adapters` modules plus a release profile tuned for memory-constrained targets (such as GCP `e2-micro`).
+
+## Release Profile (`e2-micro` RAM Budget)
+
+`Cargo.toml` configures `[profile.release]` with `lto = true`, `codegen-units = 1`, `strip = true`, and `opt-level = "z"` to minimize binary footprint and resident memory.
+
+{{#if study_mode}}
+## Study Mode vs. Boilerplate Guide
+
+This repository is initialized in **Study Mode**:
+
+- **Study-Mode Practice Zones (implement and extend by hand):**
+  - `src/domain/mod.rs`
+  - `src/ports/mod.rs`
+  - `src/adapters/mod.rs`
+- **Boilerplate Infrastructure (pre-wired scaffolding):**
+  - `src/main.rs`
+  - `Dockerfile`
+  - `.github/workflows/ci.yml`
+{{/if}}
+{{#if with_vm}}
+
+## VM Deployment Overlay
+
+See `deploy/README.md` and `deploy/{{project_name}}.service` for systemd memory cgroups and automated backups.
+{{/if}}
+
+## Quickstart
+
+```bash
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo test
+cargo run
+```

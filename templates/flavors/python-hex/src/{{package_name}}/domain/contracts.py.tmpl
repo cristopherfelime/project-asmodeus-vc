@@ -1,0 +1,49 @@
+"""Pure frozen domain models for {{project_name}}."""
+
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _require_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() != timedelta(0):
+        raise ValueError("timestamp must be timezone-aware UTC")
+    return value
+
+
+class DomainRecord(BaseModel):
+    """Immutable domain record with exact decimal value and UTC timestamp."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    record_id: str = Field(min_length=1, max_length=64)
+    amount: Decimal
+    recorded_at_utc: datetime
+
+    @field_validator("amount")
+    @classmethod
+    def _validate_amount(cls, value: Decimal) -> Decimal:
+        if not value.is_finite():
+            raise ValueError("amount must be finite")
+        return value
+
+    @field_validator("recorded_at_utc")
+    @classmethod
+    def _validate_recorded_at_utc(cls, value: datetime) -> datetime:
+        return _require_utc(value)
+
+
+class HealthSnapshot(BaseModel):
+    """Point-in-time service health summary."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    service_name: str = Field(min_length=1)
+    record_count: int = Field(ge=0)
+    checked_at_utc: datetime
+
+    @field_validator("checked_at_utc")
+    @classmethod
+    def _validate_checked_at_utc(cls, value: datetime) -> datetime:
+        return _require_utc(value)

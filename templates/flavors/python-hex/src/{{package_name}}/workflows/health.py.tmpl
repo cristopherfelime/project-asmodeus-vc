@@ -1,0 +1,39 @@
+"""Health and record-registration workflows wired solely through ports."""
+
+from decimal import Decimal
+
+from {{package_name}}.domain.contracts import DomainRecord, HealthSnapshot
+from {{package_name}}.ports.clock import Clock
+from {{package_name}}.ports.storage import RecordRepository
+
+
+def register_record(
+    record_id: str,
+    amount: Decimal,
+    *,
+    clock: Clock,
+    repository: RecordRepository,
+) -> DomainRecord:
+    """Construct, timestamp, and persist a new domain record."""
+    record = DomainRecord(
+        record_id=record_id,
+        amount=amount,
+        recorded_at_utc=clock.now_utc(),
+    )
+    repository.save(record)
+    return record
+
+
+def run_health_check(
+    *,
+    service_name: str,
+    clock: Clock,
+    repository: RecordRepository,
+) -> HealthSnapshot:
+    """Compute a point-in-time health snapshot via injected ports."""
+    records = repository.list_all()
+    return HealthSnapshot(
+        service_name=service_name,
+        record_count=len(records),
+        checked_at_utc=clock.now_utc(),
+    )

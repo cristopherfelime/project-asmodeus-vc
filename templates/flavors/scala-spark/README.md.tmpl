@@ -1,0 +1,39 @@
+# {{project_name}}
+
+{{description}}
+
+Scala 2.13.15 + Apache Spark 3.5.3 starter with pure `Either`-validated domain models (`Events`), decoupled transform logic (`Aggregator`), and ScalaTest unit coverage (`EventsSpec`).
+
+## Poseidon / Hephaestus Notes: PySpark vs. Scala Spark
+
+- **Typed `Dataset[T]` vs. Python UDFs (Poseidon / Hephaestus boundary):** Scala Spark executes `groupByKey` and `mapGroups` directly inside the JVM without Python-worker serialization hops or Arrow/Pickle marshaling penalties.
+- **Pure Scala core first:** Keep validation (`Events.validate`) and core aggregation logic (`Aggregator.summarizeInMemory`) free of `SparkSession` so unit tests run in milliseconds without booting a local Spark driver, while Spark `Dataset` bindings wrap those exact domain contracts.
+- **Dependency hygiene:** `spark-sql` is marked `Provided` for cluster submission (`spark-submit`), while `build.sbt` keeps `Test` and `Compile / run` able to execute locally with Java 17 `--add-opens`.
+
+{{#if study_mode}}
+## Study Mode vs. Boilerplate Guide
+
+This repository is initialized in **Study Mode**:
+
+- **Study-Mode Practice Zones (implement and extend by hand):**
+  - `src/main/scala/com/{{scala_package}}/domain/Events.scala`
+  - `src/main/scala/com/{{scala_package}}/transforms/Aggregator.scala`
+  - `src/test/scala/com/{{scala_package}}/EventsSpec.scala`
+- **Boilerplate Infrastructure (pre-wired scaffolding):**
+  - `src/main/scala/com/{{scala_package}}/Main.scala`
+  - `build.sbt`, `project/build.properties`, `.scalafmt.conf`
+  - `.github/workflows/ci.yml`
+{{/if}}
+{{#if with_compose}}
+
+## Docker Compose Overlay
+
+See `docker/docker-compose.yaml` (especially the `lakehouse` and `streaming` profiles) for local MinIO / broker integration.
+{{/if}}
+
+## Quickstart
+
+```bash
+sbt test
+sbt package
+```

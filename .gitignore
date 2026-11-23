@@ -1,0 +1,36 @@
+# Virtual environments & Python artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Tool caches & test outputs
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+coverage.xml
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+!.env.example.tmpl
+!.env.compose.example
+!.env.compose.example.tmpl
+
+# Agent session working logs (kept local per repo policy)
+AGENTS/AGENTS_LOGS/
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

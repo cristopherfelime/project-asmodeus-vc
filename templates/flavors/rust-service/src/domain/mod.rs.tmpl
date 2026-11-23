@@ -1,0 +1,83 @@
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Severity {
+    Info,
+    Warning,
+    Critical,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum DomainError {
+    #[error("event id must not be empty")]
+    EmptyId,
+    #[error("event message must not be empty")]
+    EmptyMessage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServiceEvent {
+    id: String,
+    message: String,
+    severity: Severity,
+}
+
+impl ServiceEvent {
+    pub fn new(
+        id: impl Into<String>,
+        message: impl Into<String>,
+        severity: Severity,
+    ) -> Result<Self, DomainError> {
+        let id = id.into();
+        if id.trim().is_empty() {
+            return Err(DomainError::EmptyId);
+        }
+
+        let message = message.into();
+        if message.trim().is_empty() {
+            return Err(DomainError::EmptyMessage);
+        }
+
+        Ok(Self {
+            id,
+            message,
+            severity,
+        })
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn severity(&self) -> Severity {
+        self.severity
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DomainError, ServiceEvent, Severity};
+
+    #[test]
+    fn constructs_valid_event_and_roundtrips_json() {
+        let event = ServiceEvent::new("evt-1", "nominal", Severity::Info).expect("valid event");
+        let json = serde_json::to_string(&event).expect("serialize event");
+        let decoded: ServiceEvent = serde_json::from_str(&json).expect("deserialize event");
+        assert_eq!(decoded, event);
+    }
+
+    #[test]
+    fn rejects_blank_id_or_message() {
+        let blank_id = ServiceEvent::new("   ", "ok", Severity::Warning);
+        assert_eq!(blank_id, Err(DomainError::EmptyId));
+
+        let blank_msg = ServiceEvent::new("evt-2", "", Severity::Critical);
+        assert_eq!(blank_msg, Err(DomainError::EmptyMessage));
+    }
+}

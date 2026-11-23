@@ -1,0 +1,34 @@
+package com.{{scala_package}}
+
+import com.{{scala_package}}.domain.{Events, RawEvent}
+import com.{{scala_package}}.transforms.Aggregator
+import org.apache.spark.sql.SparkSession
+
+object Main {
+  def main(args: Array[String]): Unit = {
+    val spark = SparkSession
+      .builder()
+      .appName("{{project_name}}")
+      .master("local[*]")
+      .getOrCreate()
+
+    try {
+      import spark.implicits._
+
+      val raw = Seq(
+        RawEvent("evt-1", "compute", 12.5),
+        RawEvent("evt-2", "storage", 7.25),
+        RawEvent("evt-3", "compute", 4.5)
+      )
+      val validated = raw.flatMap(event => Events.validate(event).toOption)
+      val dataset = spark.createDataset(validated)
+      val summaries = Aggregator.summarizeDataset(dataset)(spark).collect().sortBy(_.category)
+
+      summaries.foreach { summary =>
+        println(s"${summary.category}: count=${summary.eventCount} total=${summary.totalAmount}")
+      }
+    } finally {
+      spark.stop()
+    }
+  }
+}

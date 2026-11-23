@@ -1,0 +1,83 @@
+package adapters
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"{{go_module}}/internal/domain"
+)
+
+type trackingSink struct {
+	active  atomic.Int32
+	maxSeen atomic.Int32
+	delay   time.Duration
+}
+
+func (s *trackingSink) Write(ctx context.Context, _ domain.Result) error {
+	cur := s.active.Add(1)
+	defer s.active.Add(-1)
+
+	for {
+		prev := s.maxSeen.Load()
+		if cur <= prev || s.maxSeen.CompareAndSwap(prev, cur) {
+			break
+		}
+	}
+
+	select {
+	case <-time.After(s.delay):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func TestWorkerPoolEnforcesConcurrencyBound(t *testing.T) {
+	const limit = 2
+	sink := &trackingSink{delay: 15 * time.Millisecond}
+	pool := NewWorkerPool(limit, sink)
+
+	jobs := make([]domain.Job, 8)
+	for i := range jobs {
+		jobs[i] = domain.Job{
+			ID:      fmt.Sprintf("job-%d", i),
+			Payload: fmt.Sprintf("payload-%d", i),
+		}
+	}
+
+	if err := pool.Run(context.Background(), jobs); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := sink.maxSeen.Load(); got > limit {
+		t.Fatalf("concurrency exceeded bound: got %d, want <= %d", got, limit)
+	}
+	if got := sink.maxSeen.Load(); got == 0 {
+		t.Fatal("expected at least one worker execution")
+	}
+}
+
+func TestWorkerPoolHonorsContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	sink := NewInMemorySink()
+	pool := NewWorkerPool(2, sink)
+	jobs := []domain.Job{
+		{
+			ID:      "job-1",
+			Payload: "ignored",
+		},
+	}
+
+	err := pool.Run(ctx, jobs)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got err %v, want context.Canceled", err)
+	}
+	if len(sink.Results()) != 0 {
+		t.Fatalf("expected 0 written results, got %d", len(sink.Results()))
+	}
+}

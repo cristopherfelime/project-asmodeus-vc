@@ -1,0 +1,47 @@
+package domain
+
+import (
+	"errors"
+	"strings"
+)
+
+var (
+	// ErrEmptyID indicates a job with a blank identifier.
+	ErrEmptyID = errors.New("job id must not be empty")
+	// ErrEmptyPayload indicates a job with an empty payload.
+	ErrEmptyPayload = errors.New("job payload must not be empty")
+)
+
+// Job represents an immutable unit of work submitted to the service.
+type Job struct {
+	ID      string
+	Payload string
+}
+
+// Result captures the deterministic outcome of processing a Job.
+type Result struct {
+	JobID     string
+	Processed string
+}
+
+// Validate enforces domain invariants before processing.
+func (j Job) Validate() error {
+	if strings.TrimSpace(j.ID) == "" {
+		return ErrEmptyID
+	}
+	if strings.TrimSpace(j.Payload) == "" {
+		return ErrEmptyPayload
+	}
+	return nil
+}
+
+// Process validates a job and produces a deterministic Result.
+func Process(job Job) (Result, error) {
+	if err := job.Validate(); err != nil {
+		return Result{}, err
+	}
+	return Result{
+		JobID:     job.ID,
+		Processed: strings.ToUpper(strings.TrimSpace(job.Payload)),
+	}, nil
+}

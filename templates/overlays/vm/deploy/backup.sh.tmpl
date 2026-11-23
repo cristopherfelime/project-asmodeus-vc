@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Safe timestamped backup and retention script for {{project_name}}.
+APP_NAME="{{project_name}}"
+DATA_DIR="${DATA_DIR:-/var/lib/${APP_NAME}}"
+DB_PATH="${DB_PATH:-${DATA_DIR}/${APP_NAME}.db}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/${APP_NAME}}"
+RETENTION_DAYS="${RETENTION_DAYS:-14}"
+TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+
+mkdir -p "${BACKUP_DIR}"
+
+if [[ -f "${DB_PATH}" ]] && command -v sqlite3 >/dev/null 2>&1; then
+  DEST_FILE="${BACKUP_DIR}/${APP_NAME}-${TIMESTAMP}.sqlite3"
+  sqlite3 -cmd ".timeout 5000" "${DB_PATH}" ".backup '${DEST_FILE}'"
+  gzip -f "${DEST_FILE}"
+  echo "[backup] created SQLite online backup: ${DEST_FILE}.gz"
+elif [[ -d "${DATA_DIR}" ]]; then
+  DEST_ARCHIVE="${BACKUP_DIR}/${APP_NAME}-data-${TIMESTAMP}.tar.gz"
+  tar -czf "${DEST_ARCHIVE}" -C "${DATA_DIR}" .
+  echo "[backup] created data directory archive: ${DEST_ARCHIVE}"
+else
+  echo "[backup] nothing to back up (missing ${DB_PATH} and ${DATA_DIR})" >&2
+  exit 1
+fi
+
+find "${BACKUP_DIR}" -type f \( -name "*.sqlite3.gz" -o -name "*.tar.gz" \) -mtime "+${RETENTION_DAYS}" -delete
+echo "[backup] pruned backups older than ${RETENTION_DAYS} days in ${BACKUP_DIR}"

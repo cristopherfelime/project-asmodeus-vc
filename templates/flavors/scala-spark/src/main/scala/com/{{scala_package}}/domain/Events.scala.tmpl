@@ -1,0 +1,53 @@
+package com.{{scala_package}}.domain
+
+sealed trait DomainError {
+  def message: String
+}
+
+case object EmptyEventId extends DomainError {
+  val message: String = "eventId must not be empty"
+}
+
+case object EmptyCategory extends DomainError {
+  val message: String = "category must not be empty"
+}
+
+final case class InvalidAmount(value: Double) extends DomainError {
+  val message: String = s"amount must be finite and non-negative: $value"
+}
+
+final case class RawEvent(
+    eventId: String,
+    category: String,
+    amount: Double
+)
+
+final case class ValidatedEvent(
+    eventId: String,
+    category: String,
+    amount: Double
+)
+
+object Events {
+  def validate(raw: RawEvent): Either[DomainError, ValidatedEvent] = {
+    val cleanId = raw.eventId.trim
+    if (cleanId.isEmpty) {
+      Left(EmptyEventId)
+    } else {
+      val cleanCategory = raw.category.trim
+      if (cleanCategory.isEmpty) {
+        Left(EmptyCategory)
+      } else if (raw.amount.isNaN || raw.amount.isInfinite || raw.amount < 0.0) {
+        Left(InvalidAmount(raw.amount))
+      } else {
+        Right(
+          ValidatedEvent(
+            eventId = cleanId,
+            category = cleanCategory.toLowerCase,
+            amount = raw.amount
+          )
+        )
+      }
+    }
+  }
+}

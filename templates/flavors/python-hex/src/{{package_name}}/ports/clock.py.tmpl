@@ -1,0 +1,12 @@
+"""Clock port decoupling workflows from wall-clock side effects."""
+
+from datetime import datetime
+from typing import Protocol
+
+
+class Clock(Protocol):
+    """Source of timezone-aware UTC timestamps."""
+
+    def now_utc(self) -> datetime:
+        """Return the current UTC timestamp."""
+        ...

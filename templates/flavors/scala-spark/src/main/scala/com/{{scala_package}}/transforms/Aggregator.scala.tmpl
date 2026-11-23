@@ -1,0 +1,48 @@
+package com.{{scala_package}}.transforms
+
+import com.{{scala_package}}.domain.ValidatedEvent
+import org.apache.spark.sql.{Dataset, SparkSession}
+
+final case class CategorySummary(
+    category: String,
+    eventCount: Long,
+    totalAmount: Double
+)
+
+object Aggregator {
+  def summarizeInMemory(events: Seq[ValidatedEvent]): Seq[CategorySummary] =
+    events
+      .groupBy(_.category)
+      .toSeq
+      .sortBy { case (category, _) => category }
+      .map { case (category, grouped) =>
+        CategorySummary(
+          category = category,
+          eventCount = grouped.size.toLong,
+          totalAmount = grouped.map(_.amount).sum
+        )
+      }
+
+  def summarizeDataset(
+      events: Dataset[ValidatedEvent]
+  )(implicit spark: SparkSession): Dataset[CategorySummary] = {
+    import spark.implicits._
+
+    events
+      .groupByKey(_.category)
+      .mapGroups { (category: String, iter: Iterator[ValidatedEvent]) =>
+        var count = 0L
+        var total = 0.0
+        while (iter.hasNext) {
+          val event = iter.next()
+          count += 1L
+          total += event.amount
+        }
+        CategorySummary(
+          category = category,
+          eventCount = count,
+          totalAmount = total
+        )
+      }
+  }
+}

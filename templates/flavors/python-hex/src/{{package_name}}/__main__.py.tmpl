@@ -1,0 +1,29 @@
+"""CLI entrypoint for {{project_name}}."""
+
+import json
+
+from {{package_name}}.adapters.memory_storage import InMemoryRecordRepository, SystemClock
+from {{package_name}}.config.settings import load_settings
+from {{package_name}}.workflows.health import run_health_check
+
+
+def main() -> None:
+    """Wire adapters, load settings, and print a startup health snapshot."""
+    settings = load_settings()
+    clock = SystemClock()
+    repository = InMemoryRecordRepository()
+    snapshot = run_health_check(
+        service_name="{{project_name}}",
+        clock=clock,
+        repository=repository,
+    )
+    payload = {
+        "app_env": settings.app_env,
+        "log_level": settings.log_level,
+        "snapshot": snapshot.model_dump(mode="json"),
+    }
+    print(json.dumps(payload, indent=2))
+
+
+if __name__ == "__main__":
+    main()

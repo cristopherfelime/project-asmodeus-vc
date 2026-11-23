@@ -1,0 +1,42 @@
+package com.{{scala_package}}
+
+import com.{{scala_package}}.domain.{
+  EmptyCategory,
+  EmptyEventId,
+  Events,
+  InvalidAmount,
+  RawEvent,
+  ValidatedEvent
+}
+import com.{{scala_package}}.transforms.{Aggregator, CategorySummary}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+class EventsSpec extends AnyFlatSpec with Matchers {
+  "Events.validate" should "accept valid events and normalize category" in {
+    val result = Events.validate(RawEvent(" evt-1 ", " Compute ", 12.5))
+    result shouldBe Right(ValidatedEvent("evt-1", "compute", 12.5))
+  }
+
+  it should "reject blank identifiers, blank categories, and invalid amounts" in {
+    Events.validate(RawEvent("  ", "compute", 1.0)) shouldBe Left(EmptyEventId)
+    Events.validate(RawEvent("evt-2", "", 1.0)) shouldBe Left(EmptyCategory)
+    Events.validate(RawEvent("evt-3", "compute", -0.5)) shouldBe Left(InvalidAmount(-0.5))
+    Events.validate(RawEvent("evt-4", "compute", Double.PositiveInfinity)) shouldBe
+      Left(InvalidAmount(Double.PositiveInfinity))
+  }
+
+  "Aggregator.summarizeInMemory" should "group counts and totals deterministically by category" in {
+    val events = Seq(
+      ValidatedEvent("evt-1", "storage", 5.0),
+      ValidatedEvent("evt-2", "compute", 10.0),
+      ValidatedEvent("evt-3", "compute", 2.5)
+    )
+
+    val summaries = Aggregator.summarizeInMemory(events)
+    summaries shouldBe Seq(
+      CategorySummary("compute", 2L, 12.5),
+      CategorySummary("storage", 1L, 5.0)
+    )
+  }
+}

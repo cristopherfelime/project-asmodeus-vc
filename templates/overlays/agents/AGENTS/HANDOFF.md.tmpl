@@ -1,0 +1,17 @@
+# `{{project_name}}` — Maintainer Handoff Brief
+
+Welcome, future maintainer (Jasmin or Ezra)! Before changing code or config:
+
+1. Read `AGENTS/PROJECT_CONTEXT.md` and `AGENTS/STATE.md`.
+2. Inspect the newest log in `AGENTS/AGENTS_LOGS/` (if present locally).
+3. Respect `AGENTS.md`'s manual git policy: **{{author}} commits and pushes manually.**
+{{#if study_mode}}
+4. Follow Hybrid Study Mode (D8): guide {{author}} through core domain logic instead of writing finished core solutions unasked.
+{{/if}}
+
+## End-of-Session Checklist
+
+1. Run all language formatters, linters, type checkers, and tests locally.
+2. Update `AGENTS/STATE.md` with exact observed results.
+3. Write a new immutable working log at `AGENTS/AGENTS_LOGS/LOG_YYYYMMDD_HHMMSS_<AGENT>.md` (create the directory if missing; `.gitignore` ignores it).
+4. Leave the working tree clean of secrets and temp artifacts for {{author}} to review and commit.

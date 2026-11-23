@@ -1,0 +1,52 @@
+package domain
+
+import (
+	"errors"
+	"testing"
+)
+
+func TestProcessSuccess(t *testing.T) {
+	job := Job{
+		ID:      "job-1",
+		Payload: "  hello world ",
+	}
+
+	got, err := Process(job)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.JobID != "job-1" {
+		t.Fatalf("got JobID %q, want %q", got.JobID, "job-1")
+	}
+	if got.Processed != "HELLO WORLD" {
+		t.Fatalf("got Processed %q, want %q", got.Processed, "HELLO WORLD")
+	}
+}
+
+func TestProcessValidationErrors(t *testing.T) {
+	cases := []struct {
+		name    string
+		job     Job
+		wantErr error
+	}{
+		{
+			name:    "empty id",
+			job:     Job{ID: "  ", Payload: "alpha"},
+			wantErr: ErrEmptyID,
+		},
+		{
+			name:    "empty payload",
+			job:     Job{ID: "job-2", Payload: "   "},
+			wantErr: ErrEmptyPayload,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Process(tc.job)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("got err %v, want %v", err, tc.wantErr)
+			}
+		})
+	}
+}

@@ -1,0 +1,36 @@
+# {{project_name}}
+
+{{description}}
+
+Zero-dependency Go 1.23 service starter (`go test -race ./...` runs 100% offline) featuring hexagonal `domain`/`ports`/`adapters` separation, structured `log/slog` logging, and a bounded goroutine worker pool honoring `context.Context` cancellation.
+
+{{#if study_mode}}
+## Study Mode vs. Boilerplate Guide
+
+This repository is initialized in **Study Mode**:
+
+- **Study-Mode Practice Zones (implement and extend by hand):**
+  - `internal/domain/job.go`
+  - `internal/domain/job_test.go`
+  - `internal/adapters/worker_pool.go`
+  - `internal/adapters/worker_pool_test.go`
+- **Boilerplate Infrastructure (pre-wired scaffolding):**
+  - `cmd/{{package_name}}/main.go`
+  - `Makefile`, `Dockerfile`
+  - `.github/workflows/ci.yml`
+{{/if}}
+{{#if with_vm}}
+
+## VM Deployment Overlay
+
+See `deploy/README.md` and `deploy/{{project_name}}.service` for `e2-micro` systemd hardening and automated backups.
+{{/if}}
+
+## Quickstart
+
+```bash
+make fmt
+make vet
+make test
+make build
+```

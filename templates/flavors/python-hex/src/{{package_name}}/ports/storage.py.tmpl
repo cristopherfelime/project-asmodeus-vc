@@ -1,0 +1,21 @@
+"""Storage port for domain records."""
+
+from typing import Protocol
+
+from {{package_name}}.domain.contracts import DomainRecord
+
+
+class RecordRepository(Protocol):
+    """Persistence boundary for DomainRecord aggregates."""
+
+    def save(self, record: DomainRecord) -> None:
+        """Persist or replace a domain record."""
+        ...
+
+    def get(self, record_id: str) -> DomainRecord | None:
+        """Look up a record by identifier."""
+        ...
+
+    def list_all(self) -> tuple[DomainRecord, ...]:
+        """Return all stored records in deterministic order."""
+        ...

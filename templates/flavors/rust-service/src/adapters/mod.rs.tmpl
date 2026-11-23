@@ -1,0 +1,52 @@
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+use crate::domain::ServiceEvent;
+use crate::ports::{EventStore, StoreError};
+
+#[derive(Debug, Default)]
+pub struct InMemoryStore {
+    events: RwLock<HashMap<String, ServiceEvent>>,
+}
+
+impl InMemoryStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl EventStore for InMemoryStore {
+    fn append(&self, event: ServiceEvent) -> Result<(), StoreError> {
+        let mut guard = self.events.write().map_err(|_| StoreError::LockPoisoned)?;
+        guard.insert(event.id().to_owned(), event);
+        Ok(())
+    }
+
+    fn get(&self, id: &str) -> Result<Option<ServiceEvent>, StoreError> {
+        let guard = self.events.read().map_err(|_| StoreError::LockPoisoned)?;
+        Ok(guard.get(id).cloned())
+    }
+
+    fn count(&self) -> Result<usize, StoreError> {
+        let guard = self.events.read().map_err(|_| StoreError::LockPoisoned)?;
+        Ok(guard.len())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::InMemoryStore;
+    use crate::domain::{ServiceEvent, Severity};
+    use crate::ports::EventStore;
+
+    #[test]
+    fn stores_and_retrieves_events() {
+        let store = InMemoryStore::new();
+        let event = ServiceEvent::new("evt-10", "healthy", Severity::Info).expect("valid event");
+
+        store.append(event.clone()).expect("append succeeds");
+        assert_eq!(store.count().expect("count succeeds"), 1);
+        assert_eq!(store.get("evt-10").expect("get succeeds"), Some(event));
+        assert_eq!(store.get("missing").expect("get succeeds"), None);
+    }
+}

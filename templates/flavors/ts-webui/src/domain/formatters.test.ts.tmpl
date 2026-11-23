@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  formatMetricValue,
+  formatUtcTimestamp,
+  isValidSlug,
+  statusLabel,
+} from "./formatters";
+
+describe("statusLabel", () => {
+  it("maps service statuses to human labels", () => {
+    expect(statusLabel("ok")).toBe("Operational");
+    expect(statusLabel("degraded")).toBe("Degraded");
+    expect(statusLabel("offline")).toBe("Offline");
+  });
+});
+
+describe("formatMetricValue", () => {
+  it("formats finite numbers with one decimal place and unit", () => {
+    expect(formatMetricValue(14.24, "ms")).toBe("14.2 ms");
+    expect(formatMetricValue(0, "req/s")).toBe("0.0 req/s");
+  });
+
+  it("returns placeholder for non-finite values", () => {
+    expect(formatMetricValue(Number.NaN, "ms")).toBe("--");
+    expect(formatMetricValue(Number.POSITIVE_INFINITY, "ms")).toBe("--");
+  });
+});
+
+describe("formatUtcTimestamp", () => {
+  it("formats valid ISO strings and Date objects in UTC", () => {
+    expect(formatUtcTimestamp("2026-01-15T12:34:56Z")).toBe("2026-01-15 12:34:56 UTC");
+    expect(formatUtcTimestamp(new Date(Date.UTC(2026, 0, 2, 3, 4, 5)))).toBe(
+      "2026-01-02 03:04:05 UTC"
+    );
+  });
+
+  it("rejects invalid dates gracefully", () => {
+    expect(formatUtcTimestamp("not-a-date")).toBe("invalid-timestamp");
+  });
+});
+
+describe("isValidSlug", () => {
+  it("accepts kebab-case identifiers and rejects invalid characters", () => {
+    expect(isValidSlug("core-api-01")).toBe(true);
+    expect(isValidSlug("single")).toBe(true);
+    expect(isValidSlug("Core_API")).toBe(false);
+    expect(isValidSlug("-leading-dash")).toBe(false);
+    expect(isValidSlug("")).toBe(false);
+  });
+});

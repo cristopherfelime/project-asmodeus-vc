@@ -1,0 +1,30 @@
+# {{project_name}}
+
+{{description}}
+
+Offline-first React 19 + TypeScript + Vite dashboard starter with strict type checking and pure domain formatting helpers tested via Vitest. Zero external CDN dependencies.
+
+{{#if study_mode}}
+## Study Mode vs. Boilerplate Guide
+
+This repository is initialized in **Study Mode**:
+
+- **Study-Mode Practice Zones (implement and extend by hand):**
+  - `src/domain/formatters.ts`
+  - `src/domain/formatters.test.ts`
+  - `src/App.tsx`
+- **Boilerplate Infrastructure (pre-wired scaffolding):**
+  - `vite.config.ts`, `tsconfig.json`, `index.html`
+  - `src/styles/theme.css`, `src/main.tsx`
+  - `.github/workflows/ci.yml`
+{{/if}}
+
+## Quickstart
+
+```bash
+npm install
+npm run typecheck
+npm test
+npm run build
+npm run dev
+```

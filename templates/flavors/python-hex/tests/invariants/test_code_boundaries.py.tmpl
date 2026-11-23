@@ -1,0 +1,71 @@
+"""AST invariant tests enforcing pure-domain hexagonal boundaries."""
+
+import ast
+from pathlib import Path
+
+FORBIDDEN_MODULES: frozenset[str] = frozenset(
+    {
+        "dotenv",
+        "httpx",
+        "os",
+        "pathlib",
+        "sqlite3",
+        "subprocess",
+        "sys",
+    }
+)
+FORBIDDEN_DATETIME_CALLS: frozenset[str] = frozenset({"now", "utcnow"})
+
+
+def _domain_source_files() -> list[Path]:
+    repo_root = Path(__file__).resolve().parents[2]
+    domain_dir = repo_root / "src" / "{{package_name}}" / "domain"
+    return sorted(domain_dir.rglob("*.py"))
+
+
+def _is_datetime_receiver(expr: ast.expr) -> bool:
+    if isinstance(expr, ast.Name):
+        return expr.id == "datetime"
+    if isinstance(expr, ast.Attribute):
+        return expr.attr == "datetime"
+    return False
+
+
+def test_domain_has_no_forbidden_io_imports() -> None:
+    files = _domain_source_files()
+    assert files, "expected at least one domain source file"
+
+    violations: list[str] = []
+    for file_path in files:
+        tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    top_level = alias.name.split(".")[0]
+                    if top_level in FORBIDDEN_MODULES:
+                        violations.append(f"{file_path.name}:{node.lineno} imports {top_level}")
+            elif isinstance(node, ast.ImportFrom) and node.module is not None:
+                top_level = node.module.split(".")[0]
+                if top_level in FORBIDDEN_MODULES:
+                    violations.append(f"{file_path.name}:{node.lineno} imports {top_level}")
+
+    assert not violations, f"Forbidden domain imports detected: {violations}"
+
+
+def test_domain_never_calls_wall_clock_now() -> None:
+    files = _domain_source_files()
+    assert files, "expected at least one domain source file"
+
+    violations: list[str] = []
+    for file_path in files:
+        tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in FORBIDDEN_DATETIME_CALLS
+                and _is_datetime_receiver(node.func.value)
+            ):
+                violations.append(f"{file_path.name}:{node.lineno} calls .{node.func.attr}()")
+
+    assert not violations, f"Wall-clock calls in domain detected: {violations}"

@@ -1,0 +1,23 @@
+# `{{project_name}}` — Project Context & Architecture
+
+> {{description}}
+
+- **Owner:** {{author}} (`{{github_user}}`)
+- **Year:** {{year}}
+
+## Architecture & Boundaries
+
+- Keep pure domain rules isolated from filesystem, network, database, and clock side effects (`domain/` -> `ports/` -> `adapters/` -> `workflows/` or language equivalents).
+- Validate external inputs at system boundaries and keep secrets inside `.env` (never commit `.env`; keep `.env.example` synchronized).
+{{#if study_mode}}
+- **Workflow Mode:** Hybrid Study Mode (D8) — agents mentor on core domain logic and algorithms while drafting infrastructure/scaffolding cleanly.
+{{else}}
+- **Workflow Mode:** Build Mode — agents implement and verify end-to-end while respecting hexagonal boundaries and ADRs (`docs/adr/`).
+{{/if}}
+
+## Maintainer Coordination Files
+
+- `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` — dual-agent constitution and verification rules.
+- `AGENTS/STATE.md` — live milestone bookmark and last verified baseline.
+- `AGENTS/HANDOFF.md` — cold-start maintainer handoff brief.
+- `AGENTS/AGENTS_LOGS/` — gitignored local session working logs (`LOG_YYYYMMDD_HHMMSS_<AGENT>.md`).
